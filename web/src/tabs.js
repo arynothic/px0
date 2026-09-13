@@ -12,6 +12,7 @@ import { clearLink } from './hover.js';
 import { clearFind } from './find.js';
 import { clearSelectAll } from './selbar.js';
 import { syncPreview, previewing, previewLine } from './markdown.js';
+import { updateVimStatus } from './vim-status.js';
 
 // Recently closed files, newest last, for Alt+Shift+T.
 const closedTabs = [];
@@ -35,11 +36,15 @@ export async function openFile(path, opts = {}) {
     }
     const d = {
       path, name: path.split('/').pop(), lang: j.lang, total: j.total, maxCols: j.maxCols,
-      size: j.size, lines: new Array(j.total), chunks: new Set([start / CHUNK]),
-      pending: new Set(), refining: new Set(), scrollTop: 0, cur: line || 1,
-      outline: null, gen: 0, markdown: !!j.markdown,
+      size: j.size, lines: new Array(j.total), raw: new Array(j.total),
+      chunks: new Set([start / CHUNK]), pending: new Set(), refining: new Set(),
+      scrollTop: 0, cur: line || 1, col: col || 0, outline: null, gen: 0,
+      markdown: !!j.markdown, dirty: false, dirtyLines: new Set(), rawComplete: false,
     };
-    for (let i = 0; i < j.lines.length; i++) d.lines[j.start + i] = j.lines[i];
+    for (let i = 0; i < j.lines.length; i++) {
+      d.lines[j.start + i] = j.lines[i];
+      if (j.raw) d.raw[j.start + i] = j.raw[i];
+    }
     d.lsp = j.lsp || { state: 'off', server: '' };
     S.tabs.push(d);
     idx = S.tabs.length - 1;
@@ -65,6 +70,7 @@ export async function openFile(path, opts = {}) {
   else vp.scrollTop = d.scrollTop;
   render();
   updateStatus();
+  updateVimStatus();
   if ($('#panel-outline')?.classList.contains('active')) loadOutline();
   if (push) pushHistory(path, line || d.cur, col);
 }
@@ -75,7 +81,9 @@ export function centerLine(n) {
   vp.scrollTop = Math.max(0, y);
 }
 
-export function closeTab(i) {
+export function closeTab(i, force = false) {
+  const tab = S.tabs[i];
+  if (!force && tab?.dirty && !confirm('Discard unsaved changes to ' + tab.name + '?')) return;
   clearSelectAll();
   const [closed] = S.tabs.splice(i, 1);
   if (closed) {
@@ -110,6 +118,16 @@ export function closeTab(i) {
   vp.scrollTop = d.scrollTop; render(); updateStatus();
 }
 
+export function closeAllTabs(force = false) {
+  while (S.tabs.length) {
+    if (!force && S.tabs[0]?.dirty) {
+      if (!confirm('Discard unsaved changes?')) return;
+      force = true;
+    }
+    closeTab(0, true);
+  }
+}
+
 // Reopens the most recently closed file that is not open already, where it was left.
 export async function reopenClosedTab() {
   while (closedTabs.length) {
@@ -126,7 +144,7 @@ export async function reopenClosedTab() {
 export function drawTabs() {
   $('#tabs').innerHTML = S.tabs.map((t, i) =>
     '<div class="tab' + (i === S.active ? ' active' : '') + '" data-i="' + i + '" title="' + esc(t.path) + '">' +
-    '<span class="tn">' + esc(t.name) + '</span><span class="x" data-close="' + i + '" title="' + withKeys('Close tab ({Alt+W})') + '"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6"/></svg></span></div>').join('');
+    '<span class="tn">' + (t.dirty ? '• ' : '') + esc(t.name) + '</span><span class="x" data-close="' + i + '" title="' + withKeys('Close tab ({Alt+W})') + '"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6"/></svg></span></div>').join('');
   const act = $('#tabs .tab.active');
   if (act) act.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
