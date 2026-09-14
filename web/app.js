@@ -2718,7 +2718,7 @@
       else
         diffContent.replaceChildren();
     } else if (want && want.diffHunks !== undefined) {
-      render2(want);
+      renderDiff(want);
     }
   }
   async function toggleDiff() {
@@ -2769,9 +2769,9 @@
       if (shown !== d)
         return;
     }
-    render2(d);
+    renderDiff(d);
   }
-  function render2(d) {
+  function renderDiff(d) {
     diffContent.replaceChildren();
     if (!d.diffHunks || !d.diffHunks.length) {
       const p = document.createElement("div");

@@ -41,7 +41,7 @@ export function syncDiffView() {
     if (want) drawDiff(want);
     else diffContent.replaceChildren();
   } else if (want && want.diffHunks !== undefined) {
-    render(want);
+    renderDiff(want);
   }
 }
 
@@ -85,10 +85,10 @@ async function drawDiff(d) {
     }
     if (shown !== d) return;
   }
-  render(d);
+  renderDiff(d);
 }
 
-function render(d) {
+function renderDiff(d) {
   diffContent.replaceChildren();
   if (!d.diffHunks || !d.diffHunks.length) {
     const p = document.createElement('div');
