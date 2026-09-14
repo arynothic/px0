@@ -85,7 +85,7 @@ The server is implemented in [`server.go`](../../server.go) using Go's standard 
 
 Even though Go's garbage collector frees unreferenced heap objects rapidly, the Go runtime does not immediately release physical memory pages back to the host operating system. In high-churn CLI sessions (such as searching a 50,000-file repository), the process resident set size (RSS) could appear inflated long after the search completes.
 
-To maintain a lean footprint (~16-20 MB RSS), `server.go` implements an automatic scavenger:
+To maintain a lean footprint (~20 MB RSS), `server.go` implements an automatic scavenger:
 
 ```go
 func (s *Server) scavenge() {

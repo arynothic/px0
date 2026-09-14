@@ -1,6 +1,6 @@
 # px0: Read Code. Fast.
 
-px0 is a fast, lightweight, read-only IDE designed for instant code navigation and review in your browser. Booting in under 1 ms and using ~16 MB of RAM, it turns your browser into a zero-latency inspection console with symbol-level navigation, deep search, and syntax highlighting across massive codebases.
+px0 is a fast, lightweight, read-only IDE designed for instant code navigation and review in your browser. Booting in under 1 ms and using ~20 MB of RAM, it turns your browser into a zero-latency inspection console with symbol-level navigation, deep search, and syntax highlighting across massive codebases.
 
 ## Why a Read-Only IDE?
 
@@ -85,7 +85,7 @@ In the modern development workflow, with AI coding agents, fast branch reviews, 
 | Parameter                | Traditional IDE (such as VS Code)     | px0 (Code Viewer)                  |
 | ------------------------ | ------------------------------------- | ---------------------------------- |
 | Primary Purpose          | Manual code authoring and plugin host | Instant code reading & navigation  |
-| Base Memory (RSS)        | ~1,440 MB (1.4+ GB)                   | ~16 MB (80x - 90x lighter)         |
+| Base Memory (RSS)        | ~1,440 MB (1.4+ GB)                   | ~20 MB (~70x lighter)              |
 | Active Startup CPU Spike | 35% - 50%                             | < 1%                               |
 | Cold Startup Time        | Several seconds                       | Sub-millisecond                    |
 | Process Tree             | 15+ Node.js/Electron processes        | 1 single static Go binary          |
@@ -100,7 +100,7 @@ All metrics are measured on real-world repositories and reproducible using [`./b
 
 | Repository   | Source Size | Files Indexed | Index Time | Fuzzy Search | Full-Tree Regex Scan | Resident RAM (RSS) |
 | ------------ | ----------- | ------------- | ---------- | ------------ | -------------------- | ------------------ |
-| flask        | 3 MB        | 235           | 1 ms       | 0.8 ms       | 2.3 ms               | 16 MB              |
+| flask        | 3 MB        | 235           | 1 ms       | 0.8 ms       | 2.3 ms               | 20 MB              |
 | redis        | 26 MB       | 1,855         | 13 ms      | 1.0 ms       | 18.2 ms              | 17 MB              |
 | react        | 63 MB       | 7,178         | 52 ms      | 2.7 ms       | 32.2 ms              | 21 MB              |
 | django       | 74 MB       | 7,014         | 39 ms      | 1.3 ms       | 26.8 ms              | 20 MB              |
@@ -117,7 +117,7 @@ Run `./benchmark.sh --vscode .` to measure both on your active machine:
 
 | Metric / Parameter | px0                    | VS Code (Server/Remote) | Notes                   |
 | ------------------ | ---------------------- | ----------------------- | ----------------------- |
-| Memory (RSS)       | 15 MB                  | 1,166 - 1,440 MB        | ~80x lighter            |
+| Memory (RSS)       | 20 MB                  | 1,166 - 1,440 MB        | ~70x lighter            |
 | Instant CPU %      | 0.0%                   | 4.0% - 39.0%            | Minimal CPU churn       |
 | Index Time         | < 1 ms                 | ~4 - 10 s               | px0 is instantaneous    |
 | Process Count      | 1 single Go binary     | 15+ processes           | Multi-process Node tree |

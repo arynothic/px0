@@ -2,7 +2,7 @@
 
 Welcome to the internal engineering documentation for px0, an ultra-lightweight, zero-config, read-only code reader and navigator packaged as a single statically-linked binary (~9.5 MB).
 
-This directory contains in-depth technical write-ups explaining how px0 achieves sub-millisecond startup, instantaneous file navigation, deep code intelligence, and a minimal memory footprint (~16 MB RSS) across codebases containing tens of thousands of files.
+This directory contains in-depth technical write-ups explaining how px0 achieves sub-millisecond startup, instantaneous file navigation, deep code intelligence, and a minimal memory footprint (~20 MB RSS) across codebases containing tens of thousands of files.
 
 ## 1. Subsystem Architecture Map
 
