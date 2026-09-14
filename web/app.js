@@ -361,6 +361,7 @@
     const last = Math.min(d.total, first + count);
     ensureChunks(d, first, last);
     let html = "";
+    const gut = d.gutter || null;
     for (let i = first;i < last; i++) {
       const n = i + 1;
       let body;
@@ -383,7 +384,19 @@
           body = esc(plain.slice(0, a)) + '<span class="vim-sel">' + esc(plain.slice(a, b)) + "</span>" + esc(plain.slice(b));
         }
       }
-      html += '<div class="row' + (n === d.cur ? " cur" : "") + vis + '" data-l="' + n + '">' + '<div class="g">' + n + '</div><div class="c">' + (body === undefined ? "" : body) + "</div></div>";
+      let rc = "row", gc = "g";
+      if (n === d.cur)
+        rc += " cur";
+      if (vis)
+        rc += vis;
+      if (gut) {
+        const m = gut.marks.get(n);
+        if (m)
+          gc += m === "add" ? " gut-add" : " gut-mod";
+        if (gut.dels.has(n))
+          rc += " gut-del";
+      }
+      html += '<div class="' + rc + '" data-l="' + n + '">' + '<div class="' + gc + '">' + n + '</div><div class="c">' + (body === undefined ? "" : body) + "</div></div>";
     }
     const sel = saveSelection();
     rowsEl.style.transform = "translateY(" + first * LH + "px)";
@@ -802,6 +815,15 @@
   // web/src/tree.js
   var treeEl = $("#tree");
   var openDirs = new Set;
+  var GIT_STATUS = {
+    M: ["git-M", "modified"],
+    A: ["git-A", "added"],
+    D: ["git-D", "deleted"],
+    U: ["git-untracked", "untracked"],
+    R: ["git-R", "renamed"],
+    C: ["git-A", "copied"],
+    "!": ["git-M", "unmerged"]
+  };
   async function drawTree(dir, container, depth) {
     let j;
     try {
@@ -814,9 +836,13 @@
       const ig = c.ignored ? " ignored" : "";
       const note = c.ignored ? " (ignored by .gitignore, not searched)" : "";
       if (c.dir) {
-        return '<div class="tw"><div class="tr dir' + ig + '" data-dir="' + esc(c.path) + '" style="padding-left:' + pad + 'px" title="Folder: ' + esc(c.path) + note + '">' + '<span class="ar"></span><span class="nm">' + esc(c.name) + "</span></div>" + '<div class="kids" data-kids="' + esc(c.path) + '"></div></div>';
+        const dc = c.dirty ? " dirty" : "";
+        return '<div class="tw"><div class="tr dir' + ig + dc + '" data-dir="' + esc(c.path) + '" style="padding-left:' + pad + 'px" title="Folder: ' + esc(c.path) + note + '">' + '<span class="ar"></span><span class="nm">' + esc(c.name) + "</span></div>" + '<div class="kids" data-kids="' + esc(c.path) + '"></div></div>';
       }
-      return '<div class="tr file' + ig + '" data-file="' + esc(c.path) + '" style="padding-left:' + (pad + 12) + 'px" title="Open ' + esc(c.path) + note + '">' + '<span class="ic" data-t="' + fileKind(c.name) + '"></span><span class="nm">' + esc(c.name) + "</span></div>";
+      const g = GIT_STATUS[c.status];
+      const gc = g ? " dirty " + g[0] : "";
+      const badge = g ? '<span class="gs" title="git: ' + g[1] + '">' + esc(c.status) + "</span>" : "";
+      return '<div class="tr file' + ig + gc + '" data-file="' + esc(c.path) + '" style="padding-left:' + (pad + 12) + 'px" title="Open ' + esc(c.path) + note + '">' + '<span class="ic" data-t="' + fileKind(c.name) + '"></span><span class="nm">' + esc(c.name) + "</span>" + badge + "</div>";
     }).join("");
   }
   var FILE_KIND = {
@@ -911,6 +937,10 @@
     }
   }
   function initTree() {
+    $("#btn-changed")?.addEventListener("click", (e) => {
+      const on = treeEl.classList.toggle("changed-only");
+      e.currentTarget.classList.toggle("active", on);
+    });
     treeEl.addEventListener("click", async (e) => {
       const dirRow = e.target.closest("[data-dir]");
       if (dirRow) {
@@ -3078,7 +3108,7 @@
   var mdDrawn = null;
   var mdGen = 0;
   function previewing(d = doc_()) {
-    return !!(d && d.markdown && S2.mdPreview && !d.mdError);
+    return !!(d && d.markdown && S2.mdPreview && !d.mdError && !d.diffMode);
   }
   function syncPreview() {
     const d = doc_();
@@ -3520,6 +3550,14 @@
       for (const b of sw.children)
         b.classList.toggle("on", isMd && b.dataset.md === "preview" === shown);
     }
+    const hasDiff = !!(d && d.diffAvailable), mode = d && d.diffMode || "source";
+    const dsw = $("#diff-switch");
+    if (dsw) {
+      dsw.hidden = !hasDiff;
+      document.body.classList.toggle("diff-tab", hasDiff);
+      for (const b of dsw.children)
+        b.classList.toggle("on", hasDiff && b.dataset.diff === mode);
+    }
     const idxEl = $("#st-index");
     if (idxEl && S2.meta) {
       idxEl.textContent = S2.meta.indexMs + "ms";
@@ -3766,6 +3804,223 @@
     });
   }
 
+  // web/src/diff.js
+  var diffview = $("#diffview");
+  var diffContent = $("#diffcontent");
+  var shown = null;
+  function setLayoutPref(mode) {
+    try {
+      localStorage.setItem("px0.diffLayout", mode);
+    } catch {}
+  }
+  function layoutPref() {
+    try {
+      return localStorage.getItem("px0.diffLayout") || "split";
+    } catch {
+      return "split";
+    }
+  }
+  function diffMode(d = doc_()) {
+    return d && d.diffMode || null;
+  }
+  function syncDiffView() {
+    const d = doc_();
+    const want = d && d.diffMode ? d : null;
+    if (want !== shown) {
+      shown = want;
+      diffview.hidden = !want;
+      if (want)
+        drawDiff(want);
+      else
+        diffContent.replaceChildren();
+    } else if (want && want.diffHunks !== undefined) {
+      renderDiff(want);
+    }
+  }
+  async function toggleDiff() {
+    if (!S2.meta?.git)
+      return;
+    const d = doc_();
+    if (!d)
+      return;
+    if (!d.diffMode && !d.diffAvailable) {
+      setStatusNote("No diff — clean file or not a git repo");
+      return;
+    }
+    setDiffMode(d.diffMode ? "source" : layoutPref());
+  }
+  async function setDiffMode(mode) {
+    const d = doc_();
+    if (!d)
+      return;
+    if (mode !== "source" && !d.diffAvailable) {
+      setStatusNote("No diff — clean file or not a git repo");
+      return;
+    }
+    if (mode === "source") {
+      d.diffMode = null;
+    } else {
+      d.diffMode = mode;
+      setLayoutPref(mode);
+    }
+    syncPreview();
+    syncDiffView();
+    updateStatus();
+  }
+  async function drawDiff(d) {
+    if (d.diffText === undefined) {
+      diffContent.replaceChildren();
+      try {
+        d.diffReq = d.diffReq || api("/api/diff", { path: d.path });
+        const j = await d.diffReq;
+        d.diffText = j.diff || "";
+        d.diffHunks = parseDiff(d.diffText);
+      } catch (e) {
+        d.diffText = "";
+        d.diffHunks = [];
+        setStatusNote("No diff: " + e.message);
+      } finally {
+        d.diffReq = null;
+      }
+      if (shown !== d)
+        return;
+    }
+    renderDiff(d);
+  }
+  function renderDiff(d) {
+    diffContent.replaceChildren();
+    if (!d.diffHunks || !d.diffHunks.length) {
+      const p = document.createElement("div");
+      p.className = "diff-empty";
+      p.textContent = "No changes against HEAD.";
+      diffContent.append(p);
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    for (const hunk of d.diffHunks) {
+      frag.append(hunkHeader(hunk));
+      frag.append(d.diffMode === "unified" ? unifiedTable(hunk) : splitTable(hunk));
+    }
+    diffContent.append(frag);
+  }
+  function hunkHeader(hunk) {
+    const el = document.createElement("div");
+    el.className = "diff-hunk-head";
+    el.textContent = "@@ -" + hunk.oldStart + " +" + hunk.newStart + " @@" + (hunk.section ? " " + hunk.section : "");
+    return el;
+  }
+  var HUNK_RE = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@[ \t]?(.*)$/;
+  function parseDiff(text) {
+    if (!text)
+      return [];
+    const hunks = [];
+    let cur = null, oldLine = 0, newLine = 0;
+    for (const line of text.split(`
+`)) {
+      const m = HUNK_RE.exec(line);
+      if (m) {
+        oldLine = +m[1];
+        newLine = +m[3];
+        cur = { oldStart: oldLine, newStart: newLine, section: m[5] || "", rows: [] };
+        hunks.push(cur);
+        continue;
+      }
+      if (!cur || line === "" || line.startsWith("\\"))
+        continue;
+      const c = line[0], body = line.slice(1);
+      if (c === "+")
+        cur.rows.push({ type: "add", newLine: newLine++, text: body });
+      else if (c === "-")
+        cur.rows.push({ type: "del", oldLine: oldLine++, text: body });
+      else
+        cur.rows.push({ type: "ctx", oldLine: oldLine++, newLine: newLine++, text: body });
+    }
+    return hunks;
+  }
+  function unifiedTable(hunk) {
+    const table = document.createElement("div");
+    table.className = "diff-table diff-unified";
+    for (const row of hunk.rows) {
+      const r = document.createElement("div");
+      r.className = "diff-row diff-" + row.type;
+      r.append(lineCell(row.type === "add" ? "" : row.oldLine), lineCell(row.type === "del" ? "" : row.newLine), markerCell(row.type), codeCell(row.text));
+      table.append(r);
+    }
+    return table;
+  }
+  function splitTable(hunk) {
+    const table = document.createElement("div");
+    table.className = "diff-table diff-split";
+    for (const pair of pairRows(hunk.rows)) {
+      const r = document.createElement("div");
+      r.className = "diff-row-pair";
+      r.append(splitSide(pair.left, "left"), splitSide(pair.right, "right"));
+      table.append(r);
+    }
+    return table;
+  }
+  function pairRows(rows) {
+    const pairs = [];
+    let i = 0;
+    while (i < rows.length) {
+      const row = rows[i];
+      if (row.type === "ctx") {
+        pairs.push({ left: row, right: row });
+        i++;
+        continue;
+      }
+      let dels = [], adds = [];
+      while (i < rows.length && rows[i].type === "del")
+        dels.push(rows[i++]);
+      while (i < rows.length && rows[i].type === "add")
+        adds.push(rows[i++]);
+      const n = Math.max(dels.length, adds.length);
+      for (let k = 0;k < n; k++)
+        pairs.push({ left: dels[k] || null, right: adds[k] || null });
+    }
+    return pairs;
+  }
+  function splitSide(row, side) {
+    const el = document.createElement("div");
+    el.className = "diff-side diff-side-" + side + (row ? " diff-" + row.type : " diff-blank");
+    if (!row) {
+      el.append(lineCell(""), markerCell(""), codeCell(""));
+      return el;
+    }
+    const ln = side === "left" ? row.oldLine : row.newLine;
+    el.append(lineCell(ln), markerCell(row.type), codeCell(row.text));
+    return el;
+  }
+  function lineCell(n) {
+    const el = document.createElement("div");
+    el.className = "diff-ln";
+    el.textContent = n === "" || n === undefined ? "" : String(n);
+    return el;
+  }
+  var MARKS = { add: "+", del: "-", ctx: "" };
+  function markerCell(type) {
+    const el = document.createElement("div");
+    el.className = "diff-mk";
+    el.textContent = MARKS[type] || "";
+    return el;
+  }
+  function codeCell(text) {
+    const el = document.createElement("div");
+    el.className = "diff-code";
+    el.innerHTML = esc(text || "") || "&nbsp;";
+    return el;
+  }
+  function initDiff() {
+    const sw = $("#diff-switch");
+    sw.addEventListener("mousedown", (e) => e.preventDefault());
+    sw.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-diff]");
+      if (!b)
+        return;
+      setDiffMode(b.dataset.diff === diffMode() ? "source" : b.dataset.diff);
+    });
+  }
+
   // web/src/tabs.js
   var closedTabs = [];
   var MAX_CLOSED = 20;
@@ -3805,7 +4060,10 @@
         markdown: !!j.markdown,
         dirty: false,
         dirtyLines: new Set,
-        rawComplete: false
+        rawComplete: false,
+        gutter: null,
+        diffMode: null,
+        diffAvailable: false
       };
       for (let i = 0;i < j.lines.length; i++) {
         d.lines[j.start + i] = j.lines[i];
@@ -3817,6 +4075,7 @@
       idx = S2.tabs.length - 1;
       if (j.refine)
         refineChunk(d, start / CHUNK);
+      loadGutter(d);
     }
     const prev = doc_();
     if (prev && prev !== S2.tabs[idx])
@@ -3828,6 +4087,7 @@
     $("#empty").hidden = true;
     hideImage();
     syncPreview();
+    syncDiffView();
     if (!S2.at || S2.at.path !== d.path)
       S2.at = null;
     S2.lsp.state = d.lsp && d.lsp.state || "off";
@@ -3849,6 +4109,25 @@
       loadOutline();
     if (push)
       pushHistory(path, line || d.cur, col);
+  }
+  function loadGutter(d) {
+    if (!S2.meta?.git)
+      return;
+    api("/api/gutter", { path: d.path }).then((j) => {
+      d.diffAvailable = !!j.available;
+      if (doc_() === d)
+        updateStatus();
+      if (!j.available)
+        return;
+      const marks = new Map;
+      for (const n of j.modified)
+        marks.set(n, "mod");
+      for (const n of j.added)
+        marks.set(n, "add");
+      d.gutter = { marks, dels: new Set(j.deleted) };
+      if (doc_() === d)
+        render();
+    }).catch(() => {});
   }
   function centerLine(n) {
     if (previewing()) {
@@ -3881,6 +4160,7 @@
     if (S2.tabs.length === 0) {
       S2.active = -1;
       syncPreview();
+      syncDiffView();
       rowsEl.innerHTML = "";
       sizer.style.height = "0px";
       $("#empty").hidden = false;
@@ -3892,6 +4172,7 @@
     S2.active = Math.min(i, S2.tabs.length - 1);
     const d = doc_();
     syncPreview();
+    syncDiffView();
     drawTabs();
     drawCrumbs();
     layout();
@@ -3938,6 +4219,7 @@
       prev.scrollTop = vp.scrollTop;
     S2.active = i;
     syncPreview();
+    syncDiffView();
     clearFind();
     clearSelectAll();
     S2.at = null;
@@ -4088,6 +4370,7 @@
     [["Mod+Shift+F"], "Search in files"],
     [["Mod+F"], "Find in file"],
     [["Mod+G"], "Go to line"],
+    [["Mod+D"], "Toggle diff view (git)"],
     [["Alt+Z"], "Toggle word wrap"],
     [["Alt+L"], "Toggle line numbers"],
     [["Alt+M"], "Toggle Markdown preview"],
@@ -4253,6 +4536,13 @@
         document.body.classList.toggle("side-hidden");
         layout();
         render();
+        return;
+      }
+      if (mod && !e.shiftKey && (e.key === "d" || e.key === "D")) {
+        if (S2.meta?.git) {
+          e.preventDefault();
+          toggleDiff();
+        }
         return;
       }
       if (mod && (e.key === "w" || e.key === "W") || e.altKey && e.code === "KeyW") {
@@ -4687,6 +4977,7 @@
   initVim();
   initEdit();
   initMarkdown();
+  initDiff();
   initMetrics();
   initStatusFit();
   (async function boot() {
@@ -4707,6 +4998,11 @@
     S2.meta = await api("/api/meta");
     if (S2.meta.metrics)
       updateMetricsDisplay(S2.meta.metrics);
+    if (S2.meta.git) {
+      const b = $("#btn-changed");
+      if (b)
+        b.hidden = false;
+    }
     document.title = S2.meta.name + " - px0";
     $("#root-name").textContent = S2.meta.name;
     $("#root-name").title = S2.meta.root;

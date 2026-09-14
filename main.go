@@ -24,16 +24,17 @@ var version = strings.TrimSpace(rawVersion)
 
 func main() {
 	var (
-		port    = flag.Int("port", 7777, "port to listen on (0 picks a free one)")
-		host    = flag.String("host", "127.0.0.1", "address to bind")
-		noOpen  = flag.Bool("no-open", false, "do not launch a browser")
-		noLSP   = flag.Bool("no-lsp", false, "do not use language servers, even if installed")
-		dev     = flag.String("dev", "", "serve the UI from this source directory instead of the embedded copy")
-		showVer = flag.Bool("version", false, "print version and exit")
+		port         = flag.Int("port", 7777, "port to listen on (0 picks a free one)")
+		host         = flag.String("host", "127.0.0.1", "address to bind")
+		noOpen       = flag.Bool("no-open", false, "do not launch a browser")
+		noLSP        = flag.Bool("no-lsp", false, "do not use language servers, even if installed")
+		noGit        = flag.Bool("no-git", false, "disable git awareness")
+		dev          = flag.String("dev", "", "serve the UI from this source directory instead of the embedded copy")
+		showVer      = flag.Bool("version", false, "print version and exit")
 		showVerShort = flag.Bool("v", false, "print version and exit (shorthand)")
-		doUpdate = flag.Bool("update", false, "check for and install latest version of px0")
-		noColor = flag.Bool("no-color", false, "disable colour output")
-		quiet   = flag.Bool("quiet", false, "suppress narration")
+		doUpdate     = flag.Bool("update", false, "check for and install latest version of px0")
+		noColor      = flag.Bool("no-color", false, "disable colour output")
+		quiet        = flag.Bool("quiet", false, "suppress narration")
 	)
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "px0 %s - a code navigator\n\nusage: px0 [flags] [directory]\n\nflags:\n", version)
@@ -47,6 +48,9 @@ func main() {
 	}
 	if *quiet {
 		uiQuiet = true
+	}
+	if *noGit {
+		gitDisabled = true
 	}
 
 	if *showVer || *showVerShort || (flag.NArg() == 1 && flag.Arg(0) == "version") {

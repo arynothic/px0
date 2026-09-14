@@ -25,6 +25,8 @@ type Node struct {
 	Dir     bool   `json:"dir"`
 	Size    int64  `json:"size"`
 	Ignored bool   `json:"ignored,omitempty"` // matched by .gitignore: listed, never indexed
+	Status  string `json:"status,omitempty"`  // git working-tree status: M/A/D/?/R/C/U
+	Dirty   bool   `json:"dirty,omitempty"`   // folder: contains a git-changed descendant
 }
 
 // vcsDirs are version control internals. Unlike other ignored entries they are
@@ -167,6 +169,12 @@ func (ix *Index) Build() {
 		sem      = make(chan struct{}, runtime.NumCPU()*4)
 	)
 
+	// git status only needs the repo root, not the walk result, so run it
+	// concurrently with the walk instead of serially after it — on large repos
+	// the ~80ms subprocess overlaps the tree scan rather than adding to it.
+	gsCh := make(chan map[string]string, 1)
+	go func() { gsCh <- gitStatus(ix.root) }()
+
 	var walk func(abs, rel string, ig *ignoreSet)
 	walk = func(abs, rel string, ig *ignoreSet) {
 		defer wg.Done()
@@ -255,7 +263,32 @@ func (ix *Index) Build() {
 
 	sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
 
+	// Overlay git working-tree status onto file nodes (computed concurrently with
+	// the walk above); nil when git is unavailable or off.
+	gs := <-gsCh
+
+	// Every ancestor directory of a changed file is dirty, so a collapsed folder
+	// can badge without the frontend fetching its subtree.
+	dirtyDirs := map[string]bool{}
+	for p := range gs {
+		for i := strings.LastIndexByte(p, '/'); i >= 0; i = strings.LastIndexByte(p, '/') {
+			p = p[:i]
+			dirtyDirs[p] = true
+		}
+	}
+
 	ix.mu.Lock()
+	if gs != nil {
+		for _, kids := range children {
+			for i := range kids {
+				if kids[i].Dir {
+					kids[i].Dirty = dirtyDirs[kids[i].Path]
+				} else if code, ok := gs[kids[i].Path]; ok {
+					kids[i].Status = code
+				}
+			}
+		}
+	}
 	ix.files, ix.children = files, children
 	ix.builtAt, ix.buildMS = time.Now(), time.Since(start).Milliseconds()
 	select {

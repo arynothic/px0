@@ -1,4 +1,4 @@
-/* Gruvbox Light: based on the Gruvbox palette. Token reference: STYLING.md. */
+/* Gruvbox Light: based on the Gruvbox palette. Token reference: docs/internals/styling-and-themes.md. */
 :root[data-theme="gruvbox-light"] {
   --theme-name: "Gruvbox Light";
   color-scheme: light;

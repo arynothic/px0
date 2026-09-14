@@ -24,7 +24,7 @@ let mdDrawn = null;  // doc whose HTML is in the article; drawing can wait on a 
 let mdGen = 0;
 
 export function previewing(d = doc_()) {
-  return !!(d && d.markdown && S.mdPreview && !d.mdError);
+  return !!(d && d.markdown && S.mdPreview && !d.mdError && !d.diffMode);
 }
 
 /* Show or hide the preview to match the active tab. Call whenever that changes. */

@@ -1,4 +1,4 @@
-/* Dracula: based on the Dracula palette. Token reference: STYLING.md. */
+/* Dracula: based on the Dracula palette. Token reference: docs/internals/styling-and-themes.md. */
 :root[data-theme="dracula"] {
   --theme-name: "Dracula";
   color-scheme: dark;

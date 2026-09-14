@@ -63,6 +63,7 @@ export function paint() {
   ensureChunks(d, first, last);
 
   let html = '';
+  const gut = d.gutter || null;
   for (let i = first; i < last; i++) {
     const n = i + 1;
     let body;
@@ -81,8 +82,16 @@ export function paint() {
         body = esc(plain.slice(0, a)) + '<span class="vim-sel">' + esc(plain.slice(a, b)) + '</span>' + esc(plain.slice(b));
       }
     }
-    html += '<div class="row' + (n === d.cur ? ' cur' : '') + vis + '" data-l="' + n + '">' +
-      '<div class="g">' + n + '</div><div class="c">' + (body === undefined ? '' : body) + '</div></div>';
+    let rc = 'row', gc = 'g';
+    if (n === d.cur) rc += ' cur';
+    if (vis) rc += vis;
+    if (gut) {
+      const m = gut.marks.get(n);
+      if (m) gc += m === 'add' ? ' gut-add' : ' gut-mod';
+      if (gut.dels.has(n)) rc += ' gut-del';
+    }
+    html += '<div class="' + rc + '" data-l="' + n + '">' +
+      '<div class="' + gc + '">' + n + '</div><div class="c">' + (body === undefined ? '' : body) + '</div></div>';
   }
   const sel = saveSelection();
   rowsEl.style.transform = 'translateY(' + (first * LH) + 'px)';

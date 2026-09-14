@@ -2,7 +2,7 @@
 // A theme is any CSS rule whose whole selector is [data-theme="<id>"], optionally
 // prefixed with :root or html. The server joins web/themes/*.css into
 // /static/themes.css, so themes are discovered from the loaded stylesheets and
-// adding one needs no JavaScript change. See STYLING.md.
+// adding one needs no JavaScript change. See docs/internals/styling-and-themes.md.
 import { showToast } from './ui.js';
 
 const KEY = 'px0.theme';

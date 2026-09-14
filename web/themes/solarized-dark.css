@@ -1,4 +1,4 @@
-/* Solarized Dark: based on the Solarized palette. Token reference: STYLING.md. */
+/* Solarized Dark: based on the Solarized palette. Token reference: docs/internals/styling-and-themes.md. */
 :root[data-theme="solarized-dark"] {
   --theme-name: "Solarized Dark";
   color-scheme: dark;

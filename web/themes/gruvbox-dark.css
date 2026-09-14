@@ -1,4 +1,4 @@
-/* Gruvbox Dark: based on the Gruvbox palette. Token reference: STYLING.md. */
+/* Gruvbox Dark: based on the Gruvbox palette. Token reference: docs/internals/styling-and-themes.md. */
 :root[data-theme="gruvbox-dark"] {
   --theme-name: "Gruvbox Dark";
   color-scheme: dark;

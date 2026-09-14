@@ -11,14 +11,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
-<!-- Every web/themes/*.css joined by the server. See STYLING.md. -->
+<!-- Every web/themes/*.css joined by the server. See docs/internals/styling-and-themes.md. -->
 <link rel="stylesheet" href="/static/themes.css">
 </head>
 <body class="right-hidden">
 <div id="app">
   <!-- SECTION: Sidebar (File explorer tree) -->
   <aside id="side">
-    <header class="panel-head"><span id="root-name">-</span><span class="ro-badge" title="px0 is read-only: it never writes to your files"><svg viewBox="0 0 10 12" aria-hidden="true"><rect x="1" y="5" width="8" height="6" rx="1"/><path d="M3 5V3.5a2 2 0 0 1 4 0V5"/></svg>Read-only</span><button id="btn-reindex" class="mini" title="Re-index">&#8635;</button></header>
+    <header class="panel-head"><span id="root-name">-</span><span class="panel-actions"><button id="btn-changed" class="mini" title="Show changed files only" hidden><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="9" r="2.5"/><path d="M6 8.5v7M18 11.5c0 3-3 3.5-6 3.5"/></svg></button><button id="btn-reindex" class="mini" title="Re-index">&#8635;</button></span></header>
     <div class="panel-body" id="tree"></div>
     <footer class="side-foot">
       <a class="side-logo" href="https://px0.ai" target="_blank" rel="noopener" title="px0.ai">
@@ -50,10 +50,18 @@
   <main id="main">
     <!-- File Tabs -->
     <div id="tabs"></div>
-    <!-- Markdown tabs only: switch between the rendered file and its source -->
-    <div id="md-switch" role="group" aria-label="Markdown view" hidden>
-      <button data-md="preview" title="Rendered Markdown ({Alt+M})">Preview</button>
-      <button data-md="source" title="Markdown source ({Alt+M})">Source</button>
+    <!-- View-mode switches, pinned to the right of the tab bar -->
+    <div id="view-switches">
+      <!-- Markdown tabs only: switch between the rendered file and its source -->
+      <div id="md-switch" class="view-switch" role="group" aria-label="Markdown view" hidden>
+        <button data-md="preview" title="Rendered Markdown ({Alt+M})">Preview</button>
+        <button data-md="source" title="Markdown source ({Alt+M})">Source</button>
+      </div>
+      <!-- Modified files in a git repo only: view the file's diff against HEAD -->
+      <div id="diff-switch" class="view-switch" role="group" aria-label="Diff view" hidden>
+        <button data-diff="split" title="Split diff ({Mod+D})">Split</button>
+        <button data-diff="unified" title="Unified diff ({Mod+D})">Unified</button>
+      </div>
     </div>
 
     <!-- Virtualized Code Editor Viewport -->
@@ -64,6 +72,8 @@
       </div>
       <!-- Markdown preview: covers the code view for a Markdown tab (Alt+M toggles) -->
       <div id="mdview" hidden><article id="md" class="md"></article></div>
+      <!-- Diff view: covers the code view while a diff layout is active (Mod+D toggles) -->
+      <div id="diffview" hidden><div id="diffcontent"></div></div>
       <div id="minimap-hits"></div>
 
       <!-- Welcome / Empty State Screen -->

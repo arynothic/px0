@@ -1,4 +1,4 @@
-/* One Dark: based on the One Dark palette. Token reference: STYLING.md. */
+/* One Dark: based on the One Dark palette. Token reference: docs/internals/styling-and-themes.md. */
 :root[data-theme="one-dark"] {
   --theme-name: "One Dark";
   color-scheme: dark;

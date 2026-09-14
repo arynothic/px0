@@ -1,4 +1,4 @@
-/* Monokai: based on the classic Monokai palette. Token reference: STYLING.md. */
+/* Monokai: based on the classic Monokai palette. Token reference: docs/internals/styling-and-themes.md. */
 :root[data-theme="monokai"] {
   --theme-name: "Monokai";
   color-scheme: dark;

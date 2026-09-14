@@ -5,6 +5,13 @@ import { openFile } from './tabs.js';
 export const treeEl = $('#tree');
 export const openDirs = new Set();
 
+/* git status letter -> CSS class + label. Empty/absent = clean, no badge. */
+const GIT_STATUS = {
+  M: ['git-M', 'modified'], A: ['git-A', 'added'], D: ['git-D', 'deleted'],
+  U: ['git-untracked', 'untracked'], R: ['git-R', 'renamed'],
+  C: ['git-A', 'copied'], '!': ['git-M', 'unmerged'],
+};
+
 export async function drawTree(dir, container, depth) {
   let j;
   try { j = await api('/api/tree', { dir }); } catch { return; }
@@ -14,12 +21,16 @@ export async function drawTree(dir, container, depth) {
     const ig = c.ignored ? ' ignored' : '';
     const note = c.ignored ? ' (ignored by .gitignore, not searched)' : '';
     if (c.dir) {
-      return '<div class="tw"><div class="tr dir' + ig + '" data-dir="' + esc(c.path) + '" style="padding-left:' + pad + 'px" title="Folder: ' + esc(c.path) + note + '">' +
+      const dc = c.dirty ? ' dirty' : ''; // backend marks any ancestor of a change
+      return '<div class="tw"><div class="tr dir' + ig + dc + '" data-dir="' + esc(c.path) + '" style="padding-left:' + pad + 'px" title="Folder: ' + esc(c.path) + note + '">' +
         '<span class="ar"></span><span class="nm">' + esc(c.name) + '</span></div>' +
         '<div class="kids" data-kids="' + esc(c.path) + '"></div></div>';
     }
-    return '<div class="tr file' + ig + '" data-file="' + esc(c.path) + '" style="padding-left:' + (pad + 12) + 'px" title="Open ' + esc(c.path) + note + '">' +
-      '<span class="ic" data-t="' + fileKind(c.name) + '"></span><span class="nm">' + esc(c.name) + '</span></div>';
+    const g = GIT_STATUS[c.status];
+    const gc = g ? ' dirty ' + g[0] : '';
+    const badge = g ? '<span class="gs" title="git: ' + g[1] + '">' + esc(c.status) + '</span>' : '';
+    return '<div class="tr file' + ig + gc + '" data-file="' + esc(c.path) + '" style="padding-left:' + (pad + 12) + 'px" title="Open ' + esc(c.path) + note + '">' +
+      '<span class="ic" data-t="' + fileKind(c.name) + '"></span><span class="nm">' + esc(c.name) + '</span>' + badge + '</div>';
   }).join('');
 }
 
@@ -69,6 +80,12 @@ export async function revealFile(path) {
 }
 
 export function initTree() {
+  // "Changed only" filter: hide clean files and known-clean folders (CSS-driven).
+  $('#btn-changed')?.addEventListener('click', e => {
+    const on = treeEl.classList.toggle('changed-only');
+    e.currentTarget.classList.toggle('active', on);
+  });
+
   treeEl.addEventListener('click', async e => {
     const dirRow = e.target.closest('[data-dir]');
     if (dirRow) {

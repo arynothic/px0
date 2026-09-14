@@ -2,7 +2,7 @@
    Themes live in web/themes/<id>.css and are served joined as /static/themes.css.
    This block holds the structural tokens and fallbacks for the optional colour
    tokens, derived from the required ones. Theme rules use :root[data-theme]
-   so they outrank these defaults regardless of load order. See STYLING.md. */
+   so they outrank these defaults regardless of load order. See docs/internals/styling-and-themes.md. */
 :root {
   --lh: 21px;
   --mono: "JetBrains Mono", "Fira Code", "Cascadia Code", "SF Mono", Menlo, Consolas, ui-monospace, monospace;
@@ -53,17 +53,14 @@ body.side-hidden #side, body.side-hidden #resizer { display: none; }
   display: flex; align-items: center; gap: 6px; padding: 9px 12px 7px;
   font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--dim);
 }
-.panel-head span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panel-head #root-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panel-actions { margin-left: auto; flex: none; display: flex; align-items: center; gap: 2px; }
+.panel-actions .mini { margin-left: 0; display: inline-flex; align-items: center; justify-content: center; }
+.panel-actions .mini svg { display: block; }
 .mini { margin-left: auto; color: var(--faint); font-size: 14px; line-height: 1; padding: 2px 4px; border-radius: 4px; }
 .mini:hover { color: var(--fg); background: var(--bg3); }
-/* px0 never writes files; the badge says so beside the workspace name. */
-.panel-head .ro-badge {
-  flex: none; margin-left: auto; display: flex; align-items: center; gap: 3px;
-  font-size: 9px; letter-spacing: .06em; color: var(--faint);
-  border: 1px solid var(--line); border-radius: 8px; padding: 1px 6px 1px 5px; cursor: default;
-}
-.ro-badge svg { width: 8px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.3; }
-.ro-badge + .mini { margin-left: 0; }
+/* "Show changed files only" toggle: on while the tree is filtered to git changes. */
+#btn-changed.active { color: var(--accent-fg); background: var(--bg3); }
 .panel-body { flex: 1; overflow: auto; padding-bottom: 16px; }
 /* Version and theme, level with the status bar beside it. */
 .side-foot {
@@ -109,6 +106,22 @@ body.side-hidden #side, body.side-hidden #resizer { display: none; }
 .tr.ignored:hover .nm, .tr.ignored.sel .nm { color: var(--dim); }
 .kids { display: none; }
 .kids.open { display: block; }
+
+/* ---------- git status (tree) ---------- */
+/* One-letter badge on dirty files; colour by status, no literal colours. */
+.tr .gs { margin-left: auto; flex: none; font: 600 10px/1 var(--mono); padding: 0 4px; }
+.tr.git-M .nm, .tr.git-M .gs, .tr.git-R .nm, .tr.git-R .gs { color: var(--accent-fg); }
+.tr.git-A .nm, .tr.git-A .gs, .tr.git-untracked .nm, .tr.git-untracked .gs { color: var(--gi); }
+.tr.git-D .nm, .tr.git-D .gs { color: var(--gd); }
+/* Dirty folder: subtle dot after its name. */
+.tr.dir.dirty > .nm::after {
+  content: ""; display: inline-block; width: 5px; height: 5px; margin-left: 5px;
+  border-radius: 50%; background: var(--accent); vertical-align: middle;
+}
+/* "Changed only" filter: hide clean files and folders (dir rows carry an
+   authoritative dirty flag from the backend, so even collapsed ones are known). */
+#tree.changed-only .tr.file:not(.dirty) { display: none; }
+#tree.changed-only .tw:not(:has(.dirty)) { display: none; }
 
 /* ---------- search panel ---------- */
 .search-form { padding: 2px 12px 8px; display: flex; flex-direction: column; gap: 6px; }
@@ -216,16 +229,19 @@ body.right-hidden #right-side, body.right-hidden #right-resizer { display: none;
 
 /* ---------- main ---------- */
 #main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
-/* Preview / Source switch for Markdown tabs, pinned to the right of the tab bar.
-   The bar pads its end so the last tab can scroll clear of it. */
-#md-switch {
-  position: absolute; top: 3px; right: 8px; z-index: 7; height: 22px; display: flex; gap: 1px;
+/* View-mode switches (Markdown Preview/Source, git Diff), pinned to the right
+   of the tab bar. The bar pads its end so the last tab can scroll clear of them. */
+#view-switches { position: absolute; top: 3px; right: 8px; z-index: 7; display: flex; gap: 6px; }
+.view-switch {
+  height: 22px; display: flex; gap: 1px;
   padding: 1px; background: var(--bg3); border: 1px solid var(--line); border-radius: 5px;
 }
-#md-switch button { padding: 0 9px; border-radius: 3px; font-size: 11px; line-height: 18px; color: var(--dim); }
-#md-switch button:hover { color: var(--fg); }
-#md-switch button.on { background: var(--bg); color: var(--accent-fg); font-weight: 600; }
+.view-switch button { padding: 0 9px; border-radius: 3px; font-size: 11px; line-height: 18px; color: var(--dim); }
+.view-switch button:hover { color: var(--fg); }
+.view-switch button.on { background: var(--bg); color: var(--accent-fg); font-weight: 600; }
 body.md-tab #tabs { padding-right: 140px; }
+body.diff-tab #tabs { padding-right: 172px; }
+body.md-tab.diff-tab #tabs { padding-right: 304px; }
 
 #tabs { display: flex; height: 28px; background: var(--bg2); border-bottom: 1px solid var(--line); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
 #tabs::-webkit-scrollbar { display: none; }
@@ -301,10 +317,22 @@ body.word-wrap .c { white-space: pre-wrap; word-break: break-word; overflow-wrap
 body.hide-lines .g { display: none; }
 body.hide-lines .c { padding-left: 16px; }
 
+/* Git gutter (normal file view): a thin bar on the line-number cell, VS Code
+   style. Deletions get a small wedge straddling the row's bottom edge. */
+.g.gut-add { box-shadow: inset 2px 0 0 var(--gi); }
+.g.gut-mod { box-shadow: inset 2px 0 0 var(--accent); }
+.row.gut-del .g::after {
+  content: ""; position: absolute; left: 0; bottom: -3px; z-index: 3;
+  border-left: 4px solid var(--gd);
+  border-top: 3px solid transparent; border-bottom: 3px solid transparent;
+}
+
 .row mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 1px 0; }
 /* The current match is a solid fill, so syntax colours on it are unreadable. */
 .row mark.on, .row mark.on * { background: var(--mark-active); color: var(--on-mark-active); }
 .row .occ { background: var(--bg4); border-radius: 2px; outline: 1px solid var(--line); }
+
+/* ---------- diff view (Mod+D) ---------- */
 
 /* Ctrl/Cmd-hover turns an identifier into a link, the way an editor does. */
 .row .link {
@@ -388,6 +416,36 @@ body.hide-lines .c { padding-left: 16px; }
 .c .gi, .md-code .gi{color:var(--gi);background:var(--gi-bg)} .c .gd, .md-code .gd{color:var(--gd);background:var(--gd-bg)}
 .c .gh, .md-code .gh{color:var(--accent-fg);font-weight:600} .c .ge, .md-code .ge{font-style:italic} .c .gs, .md-code .gs{font-weight:600}
 .c .err, .md-code .err{color:var(--err);text-decoration:underline wavy}
+
+/* ---------- diff view (Mod+D): split (default) or unified render of a
+   modified file's git diff against HEAD, in its own overlay like the
+   Markdown preview -- not virtualized, since a single file's diff is small. */
+#diffview { position: absolute; inset: 0; overflow: auto; background: var(--bg); }
+#diffcontent { font: var(--fs)/var(--lh) var(--mono); padding-bottom: 40vh; }
+.diff-empty { padding: 24px 16px; color: var(--faint); font: 12px/1.4 var(--ui); }
+.diff-hunk-head {
+  position: sticky; top: 0; z-index: 1; padding: 4px 12px;
+  color: var(--accent-fg); background: var(--bg3);
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  font-size: 12px; white-space: pre;
+}
+.diff-hunk-head:first-child { border-top: none; }
+.diff-ln {
+  flex: none; width: 48px; padding: 0 10px 0 6px; text-align: right;
+  color: var(--faint); user-select: none; font-variant-numeric: tabular-nums;
+}
+.diff-mk { flex: none; width: 14px; text-align: center; color: var(--faint); user-select: none; }
+.diff-code { flex: 1; min-width: 0; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; padding-right: 12px; }
+.diff-row, .diff-side { display: flex; }
+.diff-row.diff-add, .diff-side.diff-add { background: var(--gi-bg); }
+.diff-row.diff-add .diff-code, .diff-side.diff-add .diff-mk { color: var(--gi); }
+.diff-row.diff-del, .diff-side.diff-del { background: var(--gd-bg); }
+.diff-row.diff-del .diff-code, .diff-side.diff-del .diff-mk { color: var(--gd); }
+.diff-side.diff-blank { background: var(--bg2); }
+/* Split: deletions and additions paired side by side, each half its own mini-row. */
+.diff-row-pair { display: flex; }
+.diff-side { flex: 1 1 50%; min-width: 0; }
+.diff-side-left { border-right: 1px solid var(--line); }
 
 /* ---------- markdown preview ---------- */
 #mdview { position: absolute; inset: 0; overflow: auto; background: var(--bg); }

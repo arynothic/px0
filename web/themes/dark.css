@@ -1,5 +1,5 @@
 /* Tokyo Night inspired: a low-glare dark palette tuned for long reading sessions.
-   Token reference and how to write your own theme: STYLING.md. */
+   Token reference and how to write your own theme: docs/internals/styling-and-themes.md. */
 :root[data-theme="dark"] {
   --theme-name: "Tokyo Night";
   color-scheme: dark;

@@ -11,7 +11,6 @@ Because all implementation, architecture refactoring, and code changes are writt
 Instead, the most valuable contribution you can provide is a clear, detailed bug report or a well-reasoned feature idea.
 
 ## How to Contribute
-
 ### Report a Bug
 
 If you encounter unexpected behavior, memory leaks, navigation bugs, or performance issues:
@@ -30,7 +29,7 @@ Have an idea to make reading and navigating code faster or smoother?
 ## Review and Implementation Process
 
 1. Review: Maintainers evaluate every issue against px0's design philosophy (simplicity, single-binary distribution, minimal resource consumption, speed).
-2. Assessment: We determine whether the proposal is apt, feasible, and aligned with the project roadmap.
-3. Execution: If approved, we formulate prompt specifications and task plans, and our AI agents implement, test, benchmark, and release the changes.
+1. Assessment: We determine whether the proposal is apt, feasible, and aligned with the project roadmap.
+1. Execution: If approved, we formulate prompt specifications and task plans, and our AI agents implement, test, benchmark, and release the changes.
 
 Thank you for helping make px0 better.

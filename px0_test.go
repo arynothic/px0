@@ -136,7 +136,7 @@ func TestThemesStylesheetJoinsEveryThemeFile(t *testing.T) {
 	if len(files) == 0 {
 		t.Fatal("no themes in web/themes")
 	}
-	// Tokens with no fallback in style.css. Keep in sync with STYLING.md.
+	// Tokens with no fallback in style.css. Keep in sync with docs/internals/styling-and-themes.md.
 	required := []string{
 		"--bg", "--bg2", "--bg3", "--bg4", "--fg", "--dim", "--faint", "--line",
 		"--accent", "--accent-fg", "--sel", "--mark", "--mark-active", "--cur", "--shadow",

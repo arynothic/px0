@@ -1,4 +1,4 @@
-/* Catppuccin Latte: based on the Catppuccin palette. Token reference: STYLING.md.
+/* Catppuccin Latte: based on the Catppuccin palette. Token reference: docs/internals/styling-and-themes.md.
    Yellow, peach, sky, green, pink and lavender are darkened from the palette so
    code stays readable (3:1 or better) on the light base. */
 :root[data-theme="catppuccin-latte"] {

@@ -1,93 +1,12 @@
 # Operational Guidelines for AI Agents
 
-This document defines critical instructions, architectural principles, and documentation maintenance workflows for AI agents working on px0.
+All operational instructions, architectural tenets, documentation maintenance requirements, and codebase mappings for AI coding agents have been consolidated under the [`docs/agents/`](docs/agents/README.md) directory.
 
-## Core Architectural Tenets
+## Quick Reference
 
-1. Read-Only by Design: px0 is exclusively a code navigation and exploration tool. It does not write, edit, format, or mutate project files on disk. Do not introduce file modification or editor save APIs.
-2. Zero Runtime and Single Binary Footprint: Any change must compile into a single static binary (`go:embed` for web assets). Do not introduce runtime dependencies (no Node.js/npm runtime requirement, no external database, no CGO dependencies).
-3. Stateless on Disk: px0 leaves zero configuration or temporary cache artifacts on the user filesystem (no local `.px0/` folders or cache files). Keep working trees untouched.
-4. Performance Budgets: Indexing must complete in milliseconds using bounded concurrency (`NumCPU * 4`). File open must remain $O(1)$ relative to file length using windowed chunking (`hlChunk = 1000`) and browser DOM virtualization. Maintain explicit memory reclamation (`debug.FreeOSMemory()` on idle).
-
-## Mandatory Documentation Maintenance Protocol
-
-Whenever modifying, adding, or refactoring code in this repository, you must audit and update the documentation accordingly:
-
-### Documentation Mapping Matrix
-
-| Component Modified | Primary Source Files | Docs to Update |
-| ------------------ | -------------------- | -------------- |
-| System Architecture / Optimizations | All `.go` files, `web/app.js` | `ARCHITECTURE.md` |
-| Indexing / Tree Walk / Gitignore | `index.go`, `ignore.go` | `ARCHITECTURE.md`, `README.md` |
-| Search / Regex / Fuzzy Finder | `search.go`, `fuzzy.go` | `ARCHITECTURE.md`, `BENCHMARKS.md` |
-| Syntax Highlighting & Lexing | `highlight.go` | `ARCHITECTURE.md`, `README.md` |
-| Language Servers (LSP) | `lsp.go`, `lspnav.go`, `lspservers.go`, `lspsetup.go`, `calls.go` | `README.md`, `BENCHMARKS.md` |
-| Frontend UI / Virtualization | `web/app.js`, `web/index.html`, `web/style.css` | `ARCHITECTURE.md`, `README.md` |
-| Markdown Preview | `markdown.go`, `web/src/markdown.js` | `ARCHITECTURE.md`, `README.md`, `STYLING.md` |
-| Themes / Colour Tokens | `web/themes/*.css`, `web/style.css`, `web/src/theme.js` | `STYLING.md` |
-| CLI Flags / Configuration | `main.go` | `README.md` |
-| Performance Metrics / Scripts | `benchmark.sh` | `BENCHMARKS.md` |
-
-## Checklist for Agents Prior to Submitting Work
-
-- Verification: Ran `go test ./...` and confirmed all unit/regression tests pass (`ok px0`).
-- Build Integrity: Verified successful build with `go build -o px0 .`.
-- Architecture Sync: Any new optimization, algorithmic adjustment, or structural change is documented in `ARCHITECTURE.md`.
-- Flag & Shortcut Sync: Any new keyboard shortcut, UI behavior, or CLI flag is reflected in `README.md`.
-- Benchmark Alignment: If search, highlight, or index performance characteristics change, verify whether `BENCHMARKS.md` requires updated notes or numbers.
-
-## Frontend Architecture & Code Map for Agents
-
-To quickly locate and modify UI features, refer to this structured section index of `web/index.html` and `web/app.js`:
-
-### HTML Structure
-
-| Section / Element ID | Description |
-| -------------------- | ----------- |
-| `<nav id="rail">` | Left activity rail (switch between Explorer, Search, Outline, Theme, Shortcuts) |
-| `<aside id="side">` | Collapsible sidebar containing panels: `#panel-files` (tree), `#panel-search`, `#panel-outline`. Its `.panel-head` shows the workspace name (`#root-name`), a `.ro-badge` marking px0 as read-only, and the re-index button (`#btn-reindex`). Its `.side-foot` holds the px0 logo linking to px0.ai (`.side-logo`, light or dark variant per theme), the version (`#st-ver`), and in `.side-actions` links to the GitHub repository, a feature request and a bug report, then the theme button (`#btn-theme`) |
-| `<div id="resizer">` | Draggable splitter between sidebar and main editor viewport |
-| `<div id="tabs">` & `#crumbs` | Open file tabs bar and current file path breadcrumb navigation |
-| `<div id="editor">` | Core editor container with `#viewport`, `#sizer`, and virtual rows container `#rows` |
-| `<div id="mdview">` | Markdown preview over `#viewport` for a Markdown tab, holding `<article id="md" class="md">`. Every id inside it is prefixed `md-`. The Preview / Source switch (`#md-switch`, pinned to the right of the tab bar inside `#main`) and the status bar's Preview button (`data-action="md-preview"`) show only on Markdown tabs; `body.md-tab` marks that state |
-| `<div id="empty">` | Welcome / splash screen shown when no files are open |
-| `<div id="hovercard">` | Floating LSP type signature, doc preview, and quick AI reference buttons |
-| `<div id="findbar">` | In-file search overlay (Ctrl+F) |
-| `<div id="toast">` | Floating bottom notification toast confirming clipboard copy actions |
-| `<footer id="status">` | Bottom status bar: language, lines, size, cursor pos, LSP status, and index time. While code is selected, `#footer-sel` (Copy Ref, Copy for Agent, Find Usages) replaces the left-side buttons. Never wraps: `fitStatus()` in `status.js` adds cumulative `fit-1`..`fit-6` classes to hide detail as width runs out |
-| `<div id="overlay">` | Modal overlay hosting Quick Open and Command Palette (`#palette`) |
-| `<div id="helpsheet">` | Keyboard shortcuts cheat-sheet modal overlay |
-
-### Frontend Modules & Build Workflow
-
-The frontend is modularized into clean ES modules under `web/src/` and bundled into `web/app.js` using `scripts/build-web.js`:
-
-- Build Script: Run `./scripts/build-web.js` (or `bun scripts/build-web.js` / `node scripts/build-web.js`). It automatically builds and validates `web/app.js`.
-- Release Integration: `build.sh` automatically runs `./scripts/build-web.js` before cross-compiling Go release binaries.
-- Module Layout:
-
-| Module | Primary Responsibilities & Key Exports |
-| ------ | -------------------------------------- |
-| `web/src/state.js` | Core state object `S`, `doc_()`, `api()`, `apiPost()`, `esc()`, `$`, `$$`, constants (`LH`, `CHUNK`, `OVERSCAN`, `MOD`, `isMac`). Per-OS shortcut labels: `keyLabel()`, `keyCaps()`, `withKeys()`, `applyKeyLabels()` (markup uses `data-keys`, `data-caps` and `{Mod+P}` in titles) |
-| `web/src/ui.js` | DOM references (`vp`, `sizer`, `rowsEl`, `editor`, `toastEl`), `showToast()`, `copyToClipboard()` |
-| `web/src/renderer.js` | `measure()`, `layout()`, `render()`, `paint()`, `toggleWordWrap()`, `toggleLineNumbers()`, on-demand chunk fetching |
-| `web/src/tabs.js` | `openFile()`, `closeTab()`, `switchTab()`, `drawTabs()`, `drawCrumbs()`, `showImage()`. `reopenClosedTab()` (Alt+Shift+T) reopens from a stack of the last 20 closed files, restoring caret line and scroll |
-| `web/src/history.js` | `pushHistory()`, `go()`: jump history back/forward (Alt+Left, Alt+Right) |
-| `web/src/status.js` | `updateStatus()`, `initMetrics()`, `updateMetricsDisplay()`, `setStatusNote()`, `fmtBytes()`, `setLspState()`, `drawLspStatus()` |
-| `web/src/cursor.js` | `wordAtPoint()`, `moveCursor()`, click / double-click selection, occurrence highlight |
-| `web/src/hover.js` | `onMove()`, `hoverAt()`, `showHover()`, `hideHover()`, token link modifier handling |
-| `web/src/selbar.js` | Status bar selection mode: `updateSelectionBar()`, `hideSelectionBar()`, `runSelectionAction()` (`Copy Ref`, `Copy for Agent`, `Find Usages`; Alt+C / Alt+A / Alt+U). Whole-file selection: `selectAll()`, `clearSelectAll()`, `copySelectAll()` (Ctrl/Cmd+A, then Ctrl/Cmd+C) |
-| `web/src/lsp.js` | `gotoDefinition()`, `findReferences()`, `warmLSP()`, `lspCall()`, hit formatting |
-| `web/src/tree.js` | `drawTree()`, `fileKind()`, `revealDir()`, `revealFile()`, explorer tree click handlers |
-| `web/src/search.js` | `runSearch()`, `renderResults()`, `displayPath()`, workspace search panel |
-| `web/src/outline.js` | `loadOutline()`, `upgradeOutline()`, `drawOutline()`, symbol kind badges |
-| `web/src/panels.js` | `showPanel()`, sidebar switching, reindex trigger, draggable sidebar resizer |
-| `web/src/inspector.js` | `showRightInspector()`, `setRightInspectorTab()`, `inspectReferences()`, right resizer |
-| `web/src/calls.js` | `showCalls()`, `initCalls()`, `openLspSetup()`: call trail tree in the right inspector (callers / callees via `/api/lsp/calls`, expanded lazily) |
-| `web/src/lspsetup.js` | `renderLspSetup()`, `cancelLspSetup()`: install / detect-and-start panel shown when no language server is running (`/api/lsp/setup`, `/api/lsp/install`, `/api/lsp/start`) |
-| `web/src/find.js` | `openFind()`, `clearFind()`, `runFind()`, `jumpToHit()`, minimap hit dots (Ctrl+F) |
-| `web/src/markdown.js` | `syncPreview()`, `togglePreview()` (Alt+M), `previewing()`, `previewLine()`, `previewTopLine()`: Markdown preview from `/api/markdown`, allowlist sanitizer, workspace link and image resolution, GitHub alerts, code block copy buttons, find in the preview (`findInPreview()`), preview scroll keys |
-| `web/src/palette.js` | `openPalette()`, `refreshPalette()`, `COMMANDS`, fuzzy file/symbol/command finder |
-| `web/src/shortcuts.js` | `showHelp()`, Alt+Z word wrap toggle, keyboard shortcuts listener |
-| `web/src/theme.js` | `listThemes()`, `setTheme()`, `cycleTheme()`, `initTheme()`: theme discovery from loaded CSS and persistence |
-| `web/src/main.js` | Module initializations and application `boot()` sequence |
+- Comprehensive Guidelines: See [`docs/agents/README.md`](docs/agents/README.md) for:
+  1. Core Architectural Tenets: Read-only design, zero-runtime static binary footprint, zero disk state, bounded concurrency budgets.
+  1. Mandatory Documentation Maintenance Matrix: Protocols for keeping documentation in sync whenever code is changed.
+  1. Pre-Commit Verification Checklist: Test suites, web bundling, and architecture synchronization.
+  1. Frontend Architecture & Code Map: Section index of `web/index.html` and ES module catalog of `web/src/`.
+- Internal Architecture Documentation: See [`docs/internals/README.md`](docs/internals/README.md) for deep-dive technical write-ups covering server lifecycle, indexing, fuzzy matching, search, syntax highlighting, DOM virtualization, and LSP.

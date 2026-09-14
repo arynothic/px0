@@ -62,6 +62,8 @@ func NewServer(ix *Index, lsp *lspManager) *Server {
 	s.mux.HandleFunc("/api/close", s.handleClose)
 	s.mux.HandleFunc("/api/raw", s.handleRaw)
 	s.mux.HandleFunc("/api/markdown", s.handleMarkdown)
+	s.mux.HandleFunc("/api/diff", s.handleDiff)
+	s.mux.HandleFunc("/api/gutter", s.handleGutter)
 	s.mux.HandleFunc("/api/search", s.handleSearch)
 	s.mux.HandleFunc("/api/outline", s.handleOutline)
 	s.mux.HandleFunc("/api/def", s.handleDef)
@@ -224,6 +226,7 @@ func (s *Server) handleMeta(w http.ResponseWriter, r *http.Request) {
 		"indexMs":    ms,
 		"builtAt":    at,
 		"ready":      s.ix.Ready(),
+		"git":        gitAvailable(s.ix.Root()),
 		"lspServers": s.lsp.Available(),
 		"metrics":    getProcessMetrics(),
 		"version":    version,
@@ -593,6 +596,43 @@ func (s *Server) handleRaw(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", ct)
 	}
 	http.ServeFile(w, r, abs)
+}
+
+// handleDiff returns the unified diff of a file against HEAD. available is false
+// (with an empty diff and 200) when git is off/absent or the file is unchanged.
+func (s *Server) handleDiff(w http.ResponseWriter, r *http.Request) {
+	_, rel, ok := s.resolvePath(r.URL.Query().Get("path"))
+	if !ok {
+		fail(w, 400, "bad path")
+		return
+	}
+	diff := gitDiff(s.ix.Root(), rel)
+	writeJSON(w, map[string]any{"path": rel, "diff": diff, "available": diff != ""})
+}
+
+// handleGutter returns per-file changed-line ranges (new-file line numbers) for
+// a VS Code-style change gutter. available is false (200, empty arrays) when
+// git is off/absent or the file is unchanged/untracked; never 500 for those.
+func (s *Server) handleGutter(w http.ResponseWriter, r *http.Request) {
+	_, rel, ok := s.resolvePath(r.URL.Query().Get("path"))
+	if !ok {
+		fail(w, 400, "bad path")
+		return
+	}
+	added, modified, deleted := gitHunks(s.ix.Root(), rel)
+	nz := func(v []int) []int { // marshal as [] not null
+		if v == nil {
+			return []int{}
+		}
+		return v
+	}
+	writeJSON(w, map[string]any{
+		"path":      rel,
+		"available": added != nil || modified != nil || deleted != nil,
+		"added":     nz(added),
+		"modified":  nz(modified),
+		"deleted":   nz(deleted),
+	})
 }
 
 func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {

@@ -1,4 +1,4 @@
-/* Solarized Light: based on the Solarized palette. Token reference: STYLING.md. */
+/* Solarized Light: based on the Solarized palette. Token reference: docs/internals/styling-and-themes.md. */
 :root[data-theme="solarized-light"] {
   --theme-name: "Solarized Light";
   color-scheme: light;

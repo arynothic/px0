@@ -4,8 +4,6 @@ This document describes how px0 renders Markdown files: the server-side conversi
 
 A Markdown tab (`.md` or `.markdown`) opens rendered by default. The reader switches to the raw source with the Preview / Source switch in the tab bar, the Preview button in the status bar, or Alt+M. The code lives in two files: [`markdown.go`](../../markdown.go) on the server and [`web/src/markdown.js`](../../web/src/markdown.js) in the browser.
 
----
-
 ## 1. Request Flow
 
 ```text
@@ -28,8 +26,6 @@ mdEnhance()                 -- alerts, code block wrappers, copy buttons
 
 The source view is not replaced. `#viewport` keeps loading and painting its rows underneath `#mdview`, so switching to the source costs one `hidden` toggle.
 
----
-
 ## 2. Opening a Markdown Tab
 
 `handleFile` in [`server.go`](../../server.go) adds `markdown: isMarkdown(rel)` to every `/api/file` response. `openFile` in [`web/src/tabs.js`](../../web/src/tabs.js) copies it onto the tab's doc object. Tab state then flows through one function:
@@ -44,10 +40,7 @@ When the fetch fails (for example a file over 4 MB), `drawPreview` stores the me
 
 The preference persists in `localStorage` under `px0.mdPreview` and is restored in `boot()` in [`web/src/main.js`](../../web/src/main.js).
 
----
-
 ## 3. Server Rendering
-
 ### Converter Configuration
 
 `mdConverter` is a single goldmark instance built at package init:
@@ -125,10 +118,7 @@ Two cases stay plain and HTML-escaped:
 | 413    | Larger than `maxMarkdownBytes` (4 MB)        |
 | 500    | goldmark returned an error                   |
 
----
-
 ## 4. Sanitization
-
 ### Why the Browser Treats the HTML as Untrusted
 
 The preview renders on px0's own origin. That origin also serves `/api/lsp/install` and `/api/lsp/start`, which accept a POST whose `Origin` matches the host. Script injected into the preview would pass that check. A Markdown file in any repository the reader opens is attacker-controlled input, so every byte from `/api/markdown` goes through `mdSanitize` before it touches the page.
@@ -138,14 +128,14 @@ The preview renders on px0's own origin. That origin also serves `/api/lsp/insta
 `mdSanitize(html, docPath)` works in five steps:
 
 1. Parse the HTML with `new DOMParser().parseFromString(html, 'text/html')`. A DOMParser document has no browsing context: it runs no script and loads no images.
-2. Walk a static snapshot of `body.querySelectorAll('*')`, skipping elements already detached with a removed ancestor.
-3. Remove, with all content, any element outside the HTML namespace or in `MD_DROP`: `script style iframe frame frameset object embed applet template noscript noembed svg math form textarea select option button link meta base title audio video source track canvas dialog`.
-4. Unwrap any element not in `MD_KEEP`, keeping its children in place. An `<input>` survives only as `type="checkbox"` and is forced `disabled`.
-5. Strip every attribute from kept elements, then restore only those that follow these rules:
-   - Attributes in `MD_ATTRS`: `align valign alt title lang dir width height colspan rowspan start reversed open checked disabled type data-line data-lang`.
-   - `id`, and `name` on `<a>`, rewritten as `id="md-<value>"`. A heading called "Status" becomes `md-status` and cannot shadow the status bar's `#status`.
-   - Class tokens only when they are `md-code`, start with `footnote`, or are highlighter tokens on `<i>`. Content cannot borrow px0's layout classes such as `row`.
-   - `src` and `href` through the URL rules below.
+1. Walk a static snapshot of `body.querySelectorAll('*')`, skipping elements already detached with a removed ancestor.
+1. Remove, with all content, any element outside the HTML namespace or in `MD_DROP`: `script style iframe frame frameset object embed applet template noscript noembed svg math form textarea select option button link meta base title audio video source track canvas dialog`.
+1. Unwrap any element not in `MD_KEEP`, keeping its children in place. An `<input>` survives only as `type="checkbox"` and is forced `disabled`.
+1. Strip every attribute from kept elements, then restore only those that follow these rules:
+  - Attributes in `MD_ATTRS`: `align valign alt title lang dir width height colspan rowspan start reversed open checked disabled type data-line data-lang`.
+  - `id`, and `name` on `<a>`, rewritten as `id="md-<value>"`. A heading called "Status" becomes `md-status` and cannot shadow the status bar's `#status`.
+  - Class tokens only when they are `md-code`, start with `footnote`, or are highlighter tokens on `<i>`. Content cannot borrow px0's layout classes such as `row`.
+  - `src` and `href` through the URL rules below.
 
 The cleaned children move into a `DocumentFragment` with `document.adoptNode`. The cleaned tree is never serialized and re-parsed, which rules out mutation XSS from parser round trips. `style` attributes never survive, so content cannot position an overlay over the UI.
 
@@ -179,8 +169,6 @@ These cases come from the browser checks run against the implementation:
 | `<div style="position:fixed;inset:0" class="row">` | Plain `<div>` with no style and no class      |
 | `## Status`                                        | `<h2 id="md-status">`                         |
 
----
-
 ## 5. Presentation
 
 `mdEnhance` runs after sanitization and adds markup that px0 itself creates:
@@ -188,9 +176,7 @@ These cases come from the browser checks run against the implementation:
 - GitHub alerts. A blockquote whose first paragraph opens with `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]` or `[!CAUTION]` loses the marker, gains a `.md-alert-title` paragraph, and gets `.md-alert .md-alert-<kind>`.
 - Code block wrappers. Each `<pre>` moves into `.md-pre`, which carries `data-lang` for a corner label and a copy button. The button holds an SVG icon rather than a text label, because find in the preview walks text nodes and would otherwise match the word "Copy".
 
-Styles live under `/* ---------- markdown preview ---------- */` in [`web/style.css`](../../web/style.css). They read only existing theme tokens, so all themes work without changes. Alerts set a local `--alert` property from existing tokens: Note `--accent`, Tip `--gi`, Important `--nc`, Warning `--mark-active`, Caution `--err`. [`STYLING.md`](../../STYLING.md) lists every token the preview uses.
-
----
+Styles live under `/* ---------- markdown preview ---------- */` in [`web/style.css`](../../web/style.css). They read only existing theme tokens, so all themes work without changes. Alerts set a local `--alert` property from existing tokens: Note `--accent`, Tip `--gi`, Important `--nc`, Warning `--mark-active`, Caution `--err`. [`styling-and-themes.md`](styling-and-themes.md) lists every token the preview uses.
 
 ## 6. Keeping the Reader's Place
 
@@ -213,8 +199,6 @@ If the HTML has not arrived yet, the line waits in `d.mdLine` and `drawPreview` 
 - Preview to source. `previewTopLine()` gives the line, then `sourceToLine(line)` scrolls the code view. The virtual scroller places rows at multiples of `LH` (20 px), but rows render at `--lh` (21 px) and grow when wrapped. `sourceToLine` therefore paints, measures where the row actually landed, and corrects `scrollTop`, up to three times.
 - Source to preview. `sourceTopLine()` reads the first painted row below the viewport's top, stores it in `d.mdLine`, and `drawPreview` applies it.
 
----
-
 ## 7. Links and History
 
 A click handler on `#md` routes plain left clicks. Modified clicks fall through to the browser, which opens the `/api/raw` href in a new tab.
@@ -228,8 +212,6 @@ A click handler on `#md` routes plain left clicks. Modified clicks fall through 
 - A path that fails to open shows a "Cannot open" toast.
 
 `mdFindAnchor` tries the anchor as written and lowercased, both URL-decoded, and accepts the element only if it sits inside `#md`.
-
----
 
 ## 8. Switch Controls
 
@@ -245,8 +227,6 @@ Three controls call `togglePreview()`:
 
 Clicking the half that is already selected does nothing. The handler toggles only when the requested view differs from `previewing()`.
 
----
-
 ## 9. Find, Select All and Keys
 
 The code view's features assume rows, so the preview substitutes its own versions:
@@ -257,8 +237,6 @@ The code view's features assume rows, so the preview substitutes its own version
 
 Hover cards, Ctrl+click definitions and the selection bar listen on `#viewport`. `#mdview` covers it, so none of them fire in the preview.
 
----
-
 ## 10. Limits and Known Gaps
 
 - Files over 4 MB are not previewed.
@@ -268,8 +246,6 @@ Hover cards, Ctrl+click definitions and the selection bar listen on `#viewport`.
 - Images that load after a scroll position is restored can push content down.
 - Relative images in a Markdown file outside the workspace (opened through a language server) do not load, because `/api/raw` accepts only workspace paths.
 - The selection bar actions (Copy Ref, Copy for Agent, Find Usages) do not act on text selected in the preview.
-
----
 
 ## 11. Tests
 

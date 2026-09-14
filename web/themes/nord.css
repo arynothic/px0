@@ -1,4 +1,4 @@
-/* Nord: based on the Nord palette. Token reference: STYLING.md. */
+/* Nord: based on the Nord palette. Token reference: docs/internals/styling-and-themes.md. */
 :root[data-theme="nord"] {
   --theme-name: "Nord";
   color-scheme: dark;

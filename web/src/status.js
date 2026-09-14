@@ -19,6 +19,14 @@ export function updateStatus() {
     for (const b of sw.children) b.classList.toggle('on', isMd && (b.dataset.md === 'preview') === shown);
   }
 
+  const hasDiff = !!(d && d.diffAvailable), mode = (d && d.diffMode) || 'source';
+  const dsw = $('#diff-switch');
+  if (dsw) {
+    dsw.hidden = !hasDiff;
+    document.body.classList.toggle('diff-tab', hasDiff);
+    for (const b of dsw.children) b.classList.toggle('on', hasDiff && b.dataset.diff === mode);
+  }
+
   const idxEl = $('#st-index');
   if (idxEl && S.meta) {
     idxEl.textContent = S.meta.indexMs + 'ms';

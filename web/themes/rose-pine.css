@@ -1,4 +1,4 @@
-/* Rose Pine: based on the Rose Pine palette. Token reference: STYLING.md. */
+/* Rose Pine: based on the Rose Pine palette. Token reference: docs/internals/styling-and-themes.md. */
 :root[data-theme="rose-pine"] {
   --theme-name: "Rose Pine";
   color-scheme: dark;

@@ -18,6 +18,7 @@ import { initVim } from './vim.js';
 import { initEdit } from './edit.js';
 import { initTheme } from './theme.js';
 import { initMarkdown } from './markdown.js';
+import { initDiff } from './diff.js';
 import { updateStatus, initMetrics, initStatusFit, updateMetricsDisplay } from './status.js';
 
 // Initialize all subsystems
@@ -38,6 +39,7 @@ initShortcuts();
 initVim();
 initEdit();
 initMarkdown();
+initDiff();
 initMetrics();
 initStatusFit();
 
@@ -68,6 +70,7 @@ initStatusFit();
   measure();
   S.meta = await api('/api/meta');
   if (S.meta.metrics) updateMetricsDisplay(S.meta.metrics);
+  if (S.meta.git) { const b = $('#btn-changed'); if (b) b.hidden = false; }
   document.title = S.meta.name + ' - px0';
   $('#root-name').textContent = S.meta.name;
   $('#root-name').title = S.meta.root;
