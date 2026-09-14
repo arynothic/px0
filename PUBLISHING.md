@@ -31,7 +31,7 @@ The project includes an automated `make publish` target in the [Makefile](Makefi
 
 1. Updates the [VERSION](VERSION) file.
 1. Bundles web assets and cross-compiles binaries into `dist/`.
-1. Commits `VERSION` and `dist/`.
+1. Commits `VERSION`.
 1. Creates an annotated Git tag `v<version>`.
 
 #### Step 1: Run publish command
@@ -57,8 +57,8 @@ echo "0.2.0" > VERSION
 # 2. Bundle frontend assets and compile release binaries
 make dist
 
-# 3. Commit version bump and artifacts
-git add VERSION dist/
+# 3. Commit version bump
+git add VERSION
 git commit -m "Release v0.2.0"
 
 # 4. Tag the release

@@ -51,7 +51,7 @@ publish:
 	@echo "==> Bundling web assets and building dist binaries..."
 	@./build.sh
 	@echo "==> Updating git repository..."
-	@git add VERSION dist/
+	@git add VERSION
 	@git commit -m "Release v$(CLEAN_VERSION)" || true
 	@git tag -fa "v$(CLEAN_VERSION)" -m "Release v$(CLEAN_VERSION)"
 	@echo ""
